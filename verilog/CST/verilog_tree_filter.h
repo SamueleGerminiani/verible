@@ -38,7 +38,7 @@ class VerilogTreeFilter : public verible::SymbolVisitor {
   void Visit(const verible::SyntaxTreeNode &) final;
 
   verible::SymbolPtr &&GetFilteredTree() {
-    assert(subTrees_.size() == 1);  // only one tree should remain
+    CHECK_EQ(subTrees_.size(), 1);
     return std::move(subTrees_.top());
   }
 

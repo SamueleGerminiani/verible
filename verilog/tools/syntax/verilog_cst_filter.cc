@@ -261,37 +261,44 @@ static int AnalyzeOneFile(
   const auto &text_structure = analyzer->Data();
   const auto &syntax_tree = text_structure.SyntaxTree();
 
+  //============================CST filtering============================
   std::unordered_set<verilog::NodeEnum> wantedNodes;
   std::unordered_set<verilog_tokentype> wantedLeaves;
   wantedNodes.insert(verilog::NodeEnum::kModuleDeclaration);
   wantedLeaves.insert(verilog_tokentype::SymbolIdentifier);
+  wantedLeaves.insert(verilog_tokentype::TK_input);
+  wantedLeaves.insert(verilog_tokentype::TK_output);
   std::vector<const verible::Symbol *> collected =
       verilog::CollectSymbolsVerilogTree(*syntax_tree, wantedNodes,
                                          wantedLeaves);
 
-  for (const auto &node : collected) {
-    if (node->Kind() == verible::SymbolKind::kNode) {
-      std::cout << "Node: "
-                << verilog::NodeEnumToString(
-                       static_cast<verilog::NodeEnum>(node->Tag().tag))
-                << std::endl;
-    } else if (node->Kind() == verible::SymbolKind::kLeaf) {
-      std::cout
-          << "Leaf: "
-          << static_cast<const verible::SyntaxTreeLeaf *>(node)->get().text()
-          << std::endl;
-    }
-  }
+  // DEBUG
+  // std::cout << "Keeping the following symbols:\n";
+  // for (const auto &node : collected) {
+  //   if (node->Kind() == verible::SymbolKind::kNode) {
+  //     std::cout << "\t"
+  //               << verilog::NodeEnumToString(
+  //                      static_cast<verilog::NodeEnum>(node->Tag().tag))
+  //               << std::endl;
+  //   } else if (node->Kind() == verible::SymbolKind::kLeaf) {
+  //     std::cout
+  //         << "\t"
+  //         << static_cast<const verible::SyntaxTreeLeaf *>(node)->get().text()
+  //         << std::endl;
+  //   }
+  // }
+
   if (collected.empty()) {
-    std::cout << "No nodes found" << std::endl;
+    std::cerr << "The collector did not find any symbols" << std::endl;
     exit(1);
   }
 
   verible::SymbolPtr filteredTree =
       verilog::FilterSymbolsVerilogTree(*syntax_tree, collected);
-  assert(filteredTree->Kind() == verible::SymbolKind::kNode);
 
-  //  // check for printtree flag, and print tree if on
+  //============================CST filtering============================
+
+  // check for printtree flag, and print tree if on
   if (absl::GetFlag(FLAGS_printtree) && filteredTree != nullptr) {
     if (!absl::GetFlag(FLAGS_export_json)) {
       std::cout << std::endl
