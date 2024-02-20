@@ -11,3 +11,12 @@ verible_clang-tidy.out
 # Local user config
 .envrc
 .direnv
+
+#work
+#runCSTfilter.sh
+#runCSTPrinter.sh
+.cache
+Session.vim
+tags
+*.swp
+
