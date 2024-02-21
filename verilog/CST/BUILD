@@ -998,6 +998,25 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "verilog-tree-dot",
+    srcs = ["verilog_tree_dot.cc"],
+    hdrs = ["verilog_tree_dot.h"],
+    deps = [
+        ":verilog-nonterminals",
+        "//common/text:concrete-syntax-leaf",
+        "//common/text:concrete-syntax-tree",
+        "//common/text:symbol",
+        "//common/text:token-info",
+        "//common/text:token-info-json",
+        "//common/util:value-saver",
+        "//verilog/parser:verilog-token",
+        "//verilog/parser:verilog-token-classifications",
+        "@com_google_absl//absl/strings",
+        "@jsonhpp",
+    ],
+)
+
 cc_test(
     name = "context-functions_test",
     srcs = ["context_functions_test.cc"],

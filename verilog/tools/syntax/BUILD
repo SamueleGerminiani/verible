@@ -62,6 +62,7 @@ cc_binary(
         "//common/util:init-command-line",
         "//common/util:logging",
         "//verilog/CST:verilog-tree-json",
+        "//verilog/CST:verilog-tree-dot",
         "//verilog/CST:verilog-tree-print",
         "//verilog/CST:verilog-tree-collector",
         "//verilog/CST:verilog-tree-filter",

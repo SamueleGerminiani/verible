@@ -50,6 +50,7 @@
 #include "nlohmann/json.hpp"
 #include "verilog/CST/verilog_nonterminals.h"
 #include "verilog/CST/verilog_tree_collector.h"
+#include "verilog/CST/verilog_tree_dot.h"
 #include "verilog/CST/verilog_tree_filter.h"
 #include "verilog/CST/verilog_tree_json.h"
 #include "verilog/CST/verilog_tree_print.h"
@@ -104,6 +105,9 @@ ABSL_FLAG(
 ABSL_FLAG(
     bool, export_json, false,
     "Uses JSON for output. Intended to be used as an input for other tools.");
+
+ABSL_FLAG(bool, export_dot, false, "Print the syntax tree in DOT format.");
+
 ABSL_FLAG(bool, printtree, false, "Whether or not to print the tree");
 ABSL_FLAG(bool, printtokens, false, "Prints all lexed and filtered tokens");
 ABSL_FLAG(bool, printrawtokens, false,
@@ -298,18 +302,20 @@ static int AnalyzeOneFile(
 
   //============================CST filtering============================
 
-  // check for printtree flag, and print tree if on
+  // // check for printtree flag, and print tree if on
   if (absl::GetFlag(FLAGS_printtree) && filteredTree != nullptr) {
-    if (!absl::GetFlag(FLAGS_export_json)) {
+    if (absl::GetFlag(FLAGS_export_json)) {
+      (*json_out)["tree"] = verilog::ConvertVerilogTreeToJson(
+          *filteredTree, analyzer->Data().Contents());
+    } else if (absl::GetFlag(FLAGS_export_dot)) {
+      std::cout << verilog::ConvertVerilogTreeToDot(*filteredTree) << "\n";
+    } else {
       std::cout << std::endl
                 << "Parse Tree"
                 << (!parse_ok ? " (incomplete due to syntax errors):" : ":")
                 << std::endl;
       verilog::PrettyPrintVerilogTree(*filteredTree,
                                       analyzer->Data().Contents(), &std::cout);
-    } else {
-      (*json_out)["tree"] = verilog::ConvertVerilogTreeToJson(
-          *filteredTree, analyzer->Data().Contents());
     }
   }
 
