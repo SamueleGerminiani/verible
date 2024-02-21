@@ -64,7 +64,6 @@ cc_binary(
         "//verilog/CST:verilog-tree-json",
         "//verilog/CST:verilog-tree-dot",
         "//verilog/CST:verilog-tree-print",
-        "//verilog/CST:verilog-tree-collector",
         "//verilog/CST:verilog-tree-filter",
         "//verilog/analysis:json-diagnostics",
         "//verilog/analysis:verilog-analyzer",

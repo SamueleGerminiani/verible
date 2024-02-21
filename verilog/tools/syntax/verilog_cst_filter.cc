@@ -49,7 +49,6 @@
 #include "common/util/logging.h"  // for operator<<, LOG, LogMessage, etc
 #include "nlohmann/json.hpp"
 #include "verilog/CST/verilog_nonterminals.h"
-#include "verilog/CST/verilog_tree_collector.h"
 #include "verilog/CST/verilog_tree_dot.h"
 #include "verilog/CST/verilog_tree_filter.h"
 #include "verilog/CST/verilog_tree_json.h"
@@ -263,18 +262,21 @@ static int AnalyzeOneFile(
   }
 
   const auto &text_structure = analyzer->Data();
-  const auto &syntax_tree = text_structure.SyntaxTree();
+  auto &syntax_tree = text_structure.SyntaxTree();
 
   //============================CST filtering============================
-  std::unordered_set<verilog::NodeEnum> wantedNodes;
-  std::unordered_set<verilog_tokentype> wantedLeaves;
-  wantedNodes.insert(verilog::NodeEnum::kModuleDeclaration);
-  wantedLeaves.insert(verilog_tokentype::SymbolIdentifier);
-  wantedLeaves.insert(verilog_tokentype::TK_input);
-  wantedLeaves.insert(verilog_tokentype::TK_output);
-  std::vector<const verible::Symbol *> collected =
-      verilog::CollectSymbolsVerilogTree(*syntax_tree, wantedNodes,
-                                         wantedLeaves);
+
+  // verilog::TreeElements include;
+  // verilog::TreeElements exclude;
+  // std::unordered_set<verilog::NodeEnum> wantedNodes;
+  // std::unordered_set<verilog_tokentype> wantedLeaves;
+  // wantedNodes.insert(verilog::NodeEnum::kModuleDeclaration);
+  // wantedLeaves.insert(verilog_tokentype::SymbolIdentifier);
+  // wantedLeaves.insert(verilog_tokentype::TK_input);
+  // wantedLeaves.insert(verilog_tokentype::TK_output);
+  // std::vector<const verible::Symbol *> collected =
+  //     verilog::CollectSymbolsVerilogTree(*syntax_tree, wantedNodes,
+  //                                        wantedLeaves);
 
   // DEBUG
   // std::cout << "Keeping the following symbols:\n";
@@ -292,13 +294,34 @@ static int AnalyzeOneFile(
   //   }
   // }
 
-  if (collected.empty()) {
-    std::cerr << "The collector did not find any symbols" << std::endl;
-    exit(1);
-  }
+  // if (collected.empty()) {
+  //   std::cerr << "The collector did not find any symbols" << std::endl;
+  //   exit(1);
+  // }
+
+  std::vector<verilog::FilteringRulePtr> rules;
+
+  // New inclusion rule
+  std::unordered_set<verilog::NodeEnum> wantedNodes;
+  std::unordered_set<verilog_tokentype> wantedLeaves;
+  wantedNodes.insert(verilog::NodeEnum::kModuleDeclaration);
+  wantedLeaves.insert(verilog_tokentype::SymbolIdentifier);
+  wantedLeaves.insert(verilog_tokentype::TK_input);
+  wantedLeaves.insert(verilog_tokentype::TK_output);
+  rules.push_back(verilog::FilteringRulePtr(
+      new verilog::TagSelection(wantedNodes, wantedLeaves)));
+  //// New inclusion rule
+  // rules.push_back(verilog::FilteringRulePtr(new verilog::SelectAll()));
+
+  // New exclusion rule
+  std::unordered_set<verilog::NodeEnum> unwantedNodes;
+  std::unordered_set<verilog_tokentype> unwantedLeaves;
+  unwantedNodes.insert(verilog::NodeEnum::kModuleHeader);
+  rules.push_back(verilog::FilteringRulePtr(
+      new verilog::TagRectification(unwantedNodes, unwantedLeaves, true)));
 
   verible::SymbolPtr filteredTree =
-      verilog::FilterSymbolsVerilogTree(*syntax_tree, collected);
+      verilog::FilterSymbolsVerilogTree(*syntax_tree, rules);
 
   //============================CST filtering============================
 
@@ -360,13 +383,13 @@ int main(int argc, char **argv) {
         AnalyzeOneFile(content, filename, preprocess_config, &file_json);
     exit_status = std::max(exit_status, file_status);
 
-    if (absl::GetFlag(FLAGS_export_json)) {
+    if (absl::GetFlag(FLAGS_printtree) && absl::GetFlag(FLAGS_export_json)) {
       json_out[std::string{filename.begin(), filename.end()}] =
           std::move(file_json);
     }
   }
 
-  if (absl::GetFlag(FLAGS_export_json)) {
+  if (absl::GetFlag(FLAGS_printtree) && absl::GetFlag(FLAGS_export_json)) {
     std::cout << std::setw(2) << json_out << std::endl;
   }
 

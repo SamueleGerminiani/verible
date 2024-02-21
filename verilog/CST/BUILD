@@ -945,22 +945,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "verilog-tree-collector",
-    srcs = ["verilog_tree_collector.cc"],
-    hdrs = ["verilog_tree_collector.h"],
-    deps = [
-        ":verilog-nonterminals",
-        "//common/text:concrete-syntax-leaf",
-        "//common/text:concrete-syntax-tree",
-        "//common/text:symbol",
-        "//common/text:token-info",
-        "//common/text:tree-utils",
-        "//common/util:value-saver",
-        "//verilog/parser:verilog-parser",
-        "@com_google_absl//absl/strings",
-    ],
-)
 
 cc_library(
     name = "verilog-tree-filter",
