@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "verilog/CST/verilog_tree_dot.h"
+#include "verilog/CST/verilog_tree_print_dot.h"
 
 #include <ostream>
 #include <sstream>
@@ -45,7 +45,7 @@ class VerilogTreeToDotTextConverter : public verible::SymbolVisitor {
     return ret;
   }
   void InitTree() {
-    dot_ << "digraph verilog_tree {" << std::endl;
+    dot_ << "digraph SystemVerilog_tree {" << std::endl;
     dot_ << "node [shape=ellipse];" << std::endl;
   }
   void FinalizeTree() { dot_ << "}" << std::endl; }
@@ -54,6 +54,7 @@ class VerilogTreeToDotTextConverter : public verible::SymbolVisitor {
   std::stringstream dot_;
   std::stack<size_t> parentIDs_;
   size_t nextNodeID_ = 0;
+  size_t depth_ = 0;
 };
 
 VerilogTreeToDotTextConverter::VerilogTreeToDotTextConverter() { InitTree(); }
@@ -64,10 +65,12 @@ void VerilogTreeToDotTextConverter::Visit(const verible::SyntaxTreeLeaf &leaf) {
 
   std::string tag_info = (txt == tag) ? txt : (tag + ": " + txt);
 
-  dot_ << nextNodeID_ << " [label=\"" << tag_info << "\""
+  dot_ << std::string(depth_, '\t') << nextNodeID_ << " [label=\"" << tag_info
+       << "\""
        << " shape=box"
        << "];" << std::endl;
-  dot_ << parentIDs_.top() << " -> " << nextNodeID_ << ";" << std::endl;
+  dot_ << std::string(depth_, '\t') << parentIDs_.top() << " -> " << nextNodeID_
+       << ";" << std::endl;
   nextNodeID_++;
 }
 
@@ -79,18 +82,21 @@ void VerilogTreeToDotTextConverter::Visit(const verible::SyntaxTreeNode &node) {
     dot_ << nextNodeID_ << " [label=\"" << tag_info
          << "\" fontcolor=white style=filled bgcolor=black];" << std::endl;
   } else {
-    dot_ << nextNodeID_ << " [label=\"" << tag_info << "\"];" << std::endl;
-    dot_ << parentIDs_.top() << " -> " << nextNodeID_ << ";" << std::endl;
+    dot_ << std::string(depth_, '\t') << nextNodeID_ << " [label=\"" << tag_info
+         << "\"];" << std::endl;
+    dot_ << std::string(depth_, '\t') << parentIDs_.top() << " -> "
+         << nextNodeID_ << ";" << std::endl;
   }
-
+  depth_++;
   parentIDs_.push(nextNodeID_++);
   for (const auto &child : node.children()) {
     if (child) child->Accept(this);
   }
   parentIDs_.pop();
+  depth_--;
 }
 
-std::string ConvertVerilogTreeToDot(const verible::Symbol &root) {
+std::string ConvertVerilogTreeToDotText(const verible::Symbol &root) {
   VerilogTreeToDotTextConverter converter;
   root.Accept(&converter);
   return converter.GetDotText();

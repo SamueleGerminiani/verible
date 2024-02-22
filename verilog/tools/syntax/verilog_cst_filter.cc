@@ -49,10 +49,11 @@
 #include "common/util/logging.h"  // for operator<<, LOG, LogMessage, etc
 #include "nlohmann/json.hpp"
 #include "verilog/CST/verilog_nonterminals.h"
-#include "verilog/CST/verilog_tree_dot.h"
 #include "verilog/CST/verilog_tree_filter.h"
 #include "verilog/CST/verilog_tree_json.h"
 #include "verilog/CST/verilog_tree_print.h"
+#include "verilog/CST/verilog_tree_print_dot.h"
+#include "verilog/CST/verilog_tree_print_terminal.h"
 #include "verilog/analysis/json_diagnostics.h"
 #include "verilog/analysis/verilog_analyzer.h"
 #include "verilog/analysis/verilog_excerpt_parse.h"
@@ -106,6 +107,9 @@ ABSL_FLAG(
     "Uses JSON for output. Intended to be used as an input for other tools.");
 
 ABSL_FLAG(bool, export_dot, false, "Print the syntax tree in DOT format.");
+
+ABSL_FLAG(bool, export_terminal, false,
+          "Print the syntax tree in terminal format.");
 
 ABSL_FLAG(bool, printtree, false, "Whether or not to print the tree");
 ABSL_FLAG(bool, printtokens, false, "Prints all lexed and filtered tokens");
@@ -265,65 +269,36 @@ static int AnalyzeOneFile(
   auto &syntax_tree = text_structure.SyntaxTree();
 
   //============================CST filtering============================
-
-  // verilog::TreeElements include;
-  // verilog::TreeElements exclude;
-  // std::unordered_set<verilog::NodeEnum> wantedNodes;
-  // std::unordered_set<verilog_tokentype> wantedLeaves;
-  // wantedNodes.insert(verilog::NodeEnum::kModuleDeclaration);
-  // wantedLeaves.insert(verilog_tokentype::SymbolIdentifier);
-  // wantedLeaves.insert(verilog_tokentype::TK_input);
-  // wantedLeaves.insert(verilog_tokentype::TK_output);
-  // std::vector<const verible::Symbol *> collected =
-  //     verilog::CollectSymbolsVerilogTree(*syntax_tree, wantedNodes,
-  //                                        wantedLeaves);
-
-  // DEBUG
-  // std::cout << "Keeping the following symbols:\n";
-  // for (const auto &node : collected) {
-  //   if (node->Kind() == verible::SymbolKind::kNode) {
-  //     std::cout << "\t"
-  //               << verilog::NodeEnumToString(
-  //                      static_cast<verilog::NodeEnum>(node->Tag().tag))
-  //               << std::endl;
-  //   } else if (node->Kind() == verible::SymbolKind::kLeaf) {
-  //     std::cout
-  //         << "\t"
-  //         << static_cast<const verible::SyntaxTreeLeaf *>(node)->get().text()
-  //         << std::endl;
-  //   }
-  // }
-
-  // if (collected.empty()) {
-  //   std::cerr << "The collector did not find any symbols" << std::endl;
-  //   exit(1);
-  // }
-
   std::vector<verilog::FilteringRulePtr> rules;
 
   // New inclusion rule
+#if 1
   std::unordered_set<verilog::NodeEnum> wantedNodes;
   std::unordered_set<verilog_tokentype> wantedLeaves;
   wantedNodes.insert(verilog::NodeEnum::kModuleDeclaration);
+  wantedNodes.insert(verilog::NodeEnum::kIfBody);
+  wantedNodes.insert(verilog::NodeEnum::kIfHeader);
+  wantedNodes.insert(verilog::NodeEnum::kElseClause);
   wantedLeaves.insert(verilog_tokentype::SymbolIdentifier);
   wantedLeaves.insert(verilog_tokentype::TK_input);
   wantedLeaves.insert(verilog_tokentype::TK_output);
+  wantedLeaves.insert(verilog_tokentype::TK_LS);
+  wantedLeaves.insert(verilog_tokentype::TK_GE);
   rules.push_back(verilog::FilteringRulePtr(
       new verilog::TagSelection(wantedNodes, wantedLeaves)));
+#else
+  rules.push_back(verilog::FilteringRulePtr(new verilog::SelectAll()));
+#endif
   //// New inclusion rule
-  // rules.push_back(verilog::FilteringRulePtr(new verilog::SelectAll()));
 
   // New exclusion rule
   std::unordered_set<verilog::NodeEnum> unwantedNodes;
   std::unordered_set<verilog_tokentype> unwantedLeaves;
-  unwantedNodes.insert(verilog::NodeEnum::kModuleHeader);
   rules.push_back(verilog::FilteringRulePtr(
       new verilog::TagRectification(unwantedNodes, unwantedLeaves, true)));
 
   verible::SymbolPtr filteredTree =
       verilog::FilterSymbolsVerilogTree(*syntax_tree, rules);
-
-  //============================CST filtering============================
 
   // // check for printtree flag, and print tree if on
   if (absl::GetFlag(FLAGS_printtree) && filteredTree != nullptr) {
@@ -331,7 +306,11 @@ static int AnalyzeOneFile(
       (*json_out)["tree"] = verilog::ConvertVerilogTreeToJson(
           *filteredTree, analyzer->Data().Contents());
     } else if (absl::GetFlag(FLAGS_export_dot)) {
-      std::cout << verilog::ConvertVerilogTreeToDot(*filteredTree) << "\n";
+      std::cout << verilog::ConvertVerilogTreeToDotText(*filteredTree) << "\n";
+    } else if (absl::GetFlag(FLAGS_export_terminal)) {
+      std::cout << "\n"
+                << verilog::ConvertVerilogTreeToTerminalText(*filteredTree)
+                << "\n";
     } else {
       std::cout << std::endl
                 << "Parse Tree"
@@ -341,6 +320,7 @@ static int AnalyzeOneFile(
                                       analyzer->Data().Contents(), &std::cout);
     }
   }
+  //=========================================================================
 
   // Check for verifytree, verify tree and print unmatched if on.
   if (absl::GetFlag(FLAGS_verifytree)) {

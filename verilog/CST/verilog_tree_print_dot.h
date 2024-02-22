@@ -20,7 +20,7 @@
 namespace verilog {
 
 // Returns a JSON representation of tree contained at root.
-std::string ConvertVerilogTreeToDot(const verible::Symbol &root);
+std::string ConvertVerilogTreeToDotText(const verible::Symbol &root);
 
 }  // namespace verilog
 
