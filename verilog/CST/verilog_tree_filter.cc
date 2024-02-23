@@ -55,10 +55,10 @@ void VerilogTreeFilter::Visit(const verible::SyntaxTreeNode &node) {
   // How many subtrees before visiting the children
   size_t currentNumberOfSubtrees = subTrees_.size();
 
-  // Visit all children
-  for (const auto &child : node.children()) {
-    if (child) {
-      child->Accept(this);
+  // Visit the children backwards
+  for (int i = node.size() - 1; i >= 0; i--) {
+    if (node[i]) {
+      node[i]->Accept(this);
     }
   }
 

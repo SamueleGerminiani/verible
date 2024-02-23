@@ -83,6 +83,35 @@ class TagSelection : public FilteringRule {
   const std::unordered_set<verilog_tokentype> &leaves_;
 };
 
+class TextSelection : public FilteringRule {
+  using FilteringRule::context_;
+  using FilteringRule::type_;
+
+ public:
+  TextSelection(const std::unordered_set<std::string> &wantedNodeTags,
+                const std::unordered_set<std::string> &wantedLeafTags)
+      : nodes_(wantedNodeTags), leaves_(wantedLeafTags) {
+    type_ = RuleType::Inclusion;
+  }
+
+  ~TextSelection() override = default;
+  bool Evaluate(const verible::Symbol &symbol,
+                const TreeContext &context) override {
+    if (context.empty() || context_.empty()) {
+      return symbol.Kind() == verible::SymbolKind::kLeaf
+                 ? leaves_.count(
+                       std::string(static_cast<const verible::SyntaxTreeLeaf*>(&symbol)->get()
+                                       .text()))
+                 : nodes_.count(std::string(NodeEnumToString(
+                       static_cast<NodeEnum>(symbol.Tag().tag))));
+    }
+    return false;
+  }
+
+  const std::unordered_set<std::string> &nodes_;
+  const std::unordered_set<std::string> &leaves_;
+};
+
 class SelectAll : public FilteringRule {
   using FilteringRule::type_;
 
@@ -163,8 +192,8 @@ class VerilogTreeFilter : public verible::SymbolVisitor {
 
   // Yes: keep the symbol
   // No: do not keep the symbol
-  // No_DeleteSubtree: do not keep the symbol and delete the subtreesassociated
-  // with the symbol
+  // No_DeleteSubtree: do not keep the symbol and delete the
+  // subtreesassociated with the symbol
   enum class CanKeepResult { Yes, No, No_DeleteSubtree };
 
   // Check if the symbol can be kept: if it is not excluded by any rule

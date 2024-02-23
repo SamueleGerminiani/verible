@@ -12,7 +12,7 @@ always_comb begin
   if (a >= 2) begin
     result = a + b;
   end else begin
-    result = a << b;
+    result = a - b;
   end
 end
 
