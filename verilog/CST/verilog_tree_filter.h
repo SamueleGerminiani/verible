@@ -30,7 +30,7 @@
 namespace verilog {
 
 // ========================Filtering rules========================
-using TreeContext = std::unordered_set<verilog::NodeEnum>;
+using TreeContext = std::vector<verilog::NodeEnum>;
 
 enum class RuleType { Inclusion, Exclusion };
 
@@ -48,6 +48,22 @@ class FilteringRule {
   bool IsExclusion() const { return type_ == RuleType::Exclusion; }
   virtual bool RequiresSubtreeDeletion() const { return false; }
 
+  bool MatchContext(const TreeContext &context) const {
+    if (!context_.empty() && context.size() >= context_.size()) {
+      auto nextMatch = context_.rbegin();
+      for (auto it = context.rbegin(); it != context.rend(); ++it) {
+        if (*nextMatch == *it) {
+          ++nextMatch;
+        }
+        if (nextMatch == context_.rend()) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return true;
+  }
+
  protected:
   TreeContext context_;
   RuleType type_;
@@ -61,22 +77,22 @@ class TagSelection : public FilteringRule {
 
  public:
   TagSelection(const std::unordered_set<verilog::NodeEnum> &wantedNodeTags,
-               const std::unordered_set<verilog_tokentype> &wantedLeafTags)
+               const std::unordered_set<verilog_tokentype> &wantedLeafTags,
+               const TreeContext &context = {})
       : nodes_(wantedNodeTags), leaves_(wantedLeafTags) {
+    context_ = context;
     type_ = RuleType::Inclusion;
   }
 
   ~TagSelection() override = default;
   bool Evaluate(const verible::Symbol &symbol,
                 const TreeContext &context) override {
-    if (context.empty() || context_.empty()) {
-      return symbol.Kind() == verible::SymbolKind::kLeaf
-                 ? leaves_.count(
-                       static_cast<verilog_tokentype>(symbol.Tag().tag))
-                 : nodes_.count(
-                       static_cast<verilog::NodeEnum>(symbol.Tag().tag));
+    if (!MatchContext(context)) {
+      return false;
     }
-    return false;
+    return symbol.Kind() == verible::SymbolKind::kLeaf
+               ? leaves_.count(static_cast<verilog_tokentype>(symbol.Tag().tag))
+               : nodes_.count(static_cast<verilog::NodeEnum>(symbol.Tag().tag));
   }
 
   const std::unordered_set<verilog::NodeEnum> &nodes_;
@@ -89,23 +105,27 @@ class TextSelection : public FilteringRule {
 
  public:
   TextSelection(const std::unordered_set<std::string> &wantedNodeTags,
-                const std::unordered_set<std::string> &wantedLeafTags)
+                const std::unordered_set<std::string> &wantedLeafTags,
+                const TreeContext &context = {})
       : nodes_(wantedNodeTags), leaves_(wantedLeafTags) {
+    context_ = context;
     type_ = RuleType::Inclusion;
   }
 
   ~TextSelection() override = default;
   bool Evaluate(const verible::Symbol &symbol,
                 const TreeContext &context) override {
-    if (context.empty() || context_.empty()) {
-      return symbol.Kind() == verible::SymbolKind::kLeaf
-                 ? leaves_.count(
-                       std::string(static_cast<const verible::SyntaxTreeLeaf*>(&symbol)->get()
-                                       .text()))
-                 : nodes_.count(std::string(NodeEnumToString(
-                       static_cast<NodeEnum>(symbol.Tag().tag))));
+    if (!MatchContext(context)) {
+      return false;
     }
-    return false;
+
+    return symbol.Kind() == verible::SymbolKind::kLeaf
+               ? leaves_.count(std::string(
+                     static_cast<const verible::SyntaxTreeLeaf *>(&symbol)
+                         ->get()
+                         .text()))
+               : nodes_.count(std::string(NodeEnumToString(
+                     static_cast<NodeEnum>(symbol.Tag().tag))));
   }
 
   const std::unordered_set<std::string> &nodes_;
@@ -132,24 +152,23 @@ class TagRectification : public FilteringRule {
  public:
   TagRectification(const std::unordered_set<verilog::NodeEnum> &wantedNodeTags,
                    const std::unordered_set<verilog_tokentype> &wantedLeafTags,
-                   bool deleteSubtree = false)
+                   const TreeContext &context = {}, bool deleteSubtree = false)
       : nodes_(wantedNodeTags),
         leaves_(wantedLeafTags),
         deleteSubtree_(deleteSubtree) {
+    context_ = context;
     type_ = RuleType::Exclusion;
   }
   ~TagRectification() override = default;
 
   bool Evaluate(const verible::Symbol &symbol,
                 const TreeContext &context) override {
-    if (context.empty() || context_.empty()) {
-      return symbol.Kind() == verible::SymbolKind::kLeaf
-                 ? leaves_.count(
-                       static_cast<verilog_tokentype>(symbol.Tag().tag))
-                 : nodes_.count(
-                       static_cast<verilog::NodeEnum>(symbol.Tag().tag));
+    if (!MatchContext(context)) {
+      return false;
     }
-    return false;
+    return symbol.Kind() == verible::SymbolKind::kLeaf
+               ? leaves_.count(static_cast<verilog_tokentype>(symbol.Tag().tag))
+               : nodes_.count(static_cast<verilog::NodeEnum>(symbol.Tag().tag));
   }
   bool RequiresSubtreeDeletion() const override { return deleteSubtree_; }
 
@@ -181,9 +200,9 @@ class VerilogTreeFilter : public verible::SymbolVisitor {
 
     for (const auto &rule : rules_) {
       if (rule->IsInclusion()) {
-        inclusionTruthValue |= rule->Evaluate(symbol, TreeContext());
+        inclusionTruthValue |= rule->Evaluate(symbol, context_);
       } else {
-        exclusionTruthValue |= rule->Evaluate(symbol, TreeContext());
+        exclusionTruthValue |= rule->Evaluate(symbol, context_);
       }
     }
 
@@ -203,7 +222,7 @@ class VerilogTreeFilter : public verible::SymbolVisitor {
 
     for (const auto &rule : rules_) {
       if (rule->IsExclusion()) {
-        if (rule->Evaluate(symbol, TreeContext())) {
+        if (rule->Evaluate(symbol, context_)) {
           exclusionTruthValue = true;
           if (rule->RequiresSubtreeDeletion()) {
             deleteSubtree = true;
@@ -218,11 +237,21 @@ class VerilogTreeFilter : public verible::SymbolVisitor {
                                  : CanKeepResult::Yes;
   }
 
+  std::string PrintContext() const {
+    std::stringstream ss;
+    for (const auto &node : context_) {
+      ss << NodeEnumToString(node) << " -> ";
+    }
+    ss << std::endl;
+    return ss.str();
+  }
+
  private:
   // accumulates subtrees during the visit
   std::stack<verible::SymbolPtr> subTrees_;
   // rules to filter the CST tree
   const std::vector<FilteringRulePtr> &rules_;
+  std::vector<NodeEnum> context_;
 };
 
 // Filter the CST tree accrding to the rules

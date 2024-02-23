@@ -52,6 +52,8 @@ void VerilogTreeFilter::Visit(const verible::SyntaxTreeLeaf &leaf) {
 }
 
 void VerilogTreeFilter::Visit(const verible::SyntaxTreeNode &node) {
+  context_.push_back(static_cast<NodeEnum>(node.Tag().tag));
+
   // How many subtrees before visiting the children
   size_t currentNumberOfSubtrees = subTrees_.size();
 
@@ -93,6 +95,7 @@ void VerilogTreeFilter::Visit(const verible::SyntaxTreeNode &node) {
       subTrees_.pop();
     }
   }
+  context_.pop_back();
 
   // Debug print
   // std::cout << "Must keep node: "
