@@ -50,7 +50,7 @@ class VerilogTreeToTerminalTextConverter : public verible::SymbolVisitor {
   std::string edgesStr_;
 
   // configurable parameters
-  //Warning: the vertical connector must be a single character
+  // Warning: the vertical connector must be a single character
   const char verticalConnector = '|';
   const std::string horizontalConnector = "`--> ";
   size_t verticalSpaceBetweenNodes = 1;
@@ -82,6 +82,9 @@ void VerilogTreeToTerminalTextConverter::Visit(
 
   // print the node
   terminal_ << edgesStr_ << horizontalConnector << tag_info << "\n";
+  if (node.empty()) {
+    return;
+  }
   // append a new vertical connector for the children of this node
   edgesStr_ += horizontalWhiteSpace + verticalConnector;
   // print the edges, the space between nodes is dictated by the
@@ -90,18 +93,24 @@ void VerilogTreeToTerminalTextConverter::Visit(
     terminal_ << edgesStr_ << "\n";
   }
 
+  // gather non-null children: we need this because the last child is a special
+  // case during printing
+  std::vector<const verible::Symbol *> safe_children;
+  for (const auto &child : node.children()) {
+    if (child) safe_children.push_back(child.get());
+  }
+
   // print the children
-  for (size_t i = 1; i <= node.size(); ++i) {
+  for (size_t i = 1; i <= safe_children.size(); ++i) {
     //  if this is the last child, we need to replace the last appended edge
     //  with white space
-    if (i == node.size()) {
+    if (i == safe_children.size()) {
       edgesStr_.replace(edgesStr_.size() - (horizontalWhiteSpace.size() + 1),
                         horizontalWhiteSpace.size() + 1,
                         horizontalWhiteSpace.size() + 1, ' ');
     }
 
-    const auto *child = &node[i - 1];
-    if (child) child->get()->Accept(this);
+    safe_children[i - 1]->Accept(this);
   }
 
   // reduce the edges string to match the parent

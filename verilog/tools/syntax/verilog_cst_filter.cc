@@ -280,11 +280,14 @@ static int AnalyzeOneFile(
   wantedTagNodes.insert(verilog::NodeEnum::kIfHeader);
   wantedTagNodes.insert(verilog::NodeEnum::kElseClause);
   wantedTagNodes.insert(verilog::NodeEnum::kAlwaysStatement);
+  wantedTagNodes.insert(verilog::NodeEnum::kLPValue);
   wantedTagLeaves.insert(verilog_tokentype::SymbolIdentifier);
   wantedTagLeaves.insert(verilog_tokentype::TK_input);
   wantedTagLeaves.insert(verilog_tokentype::TK_output);
   wantedTagLeaves.insert(verilog_tokentype::TK_LS);
   wantedTagLeaves.insert(verilog_tokentype::TK_GE);
+  wantedTagLeaves.insert(verilog_tokentype::TK_LAND);
+  wantedTagLeaves.insert(verilog_tokentype::TK_LOR);
   rules.push_back(verilog::FilteringRulePtr(
       new verilog::TagSelection(wantedTagNodes, wantedTagLeaves)));
 
@@ -304,17 +307,14 @@ static int AnalyzeOneFile(
   wantedTextLeaves.insert("=");
   rules.push_back(verilog::FilteringRulePtr(
       new verilog::TextSelection(wantedTextNodes, wantedTextLeaves)));
-#else
-  rules.push_back(verilog::FilteringRulePtr(new verilog::SelectAll()));
-#endif
 
   // New exclusion rule
-    std::unordered_set<verilog::NodeEnum> unwantedTagNodes;
-    std::unordered_set<verilog_tokentype> unwantedTagLeaves;
-    unwantedTagNodes.insert(verilog::NodeEnum::kInstantiationBase);
-    unwantedTagNodes.insert(verilog::NodeEnum::kPortDeclarationList);
-    rules.push_back(verilog::FilteringRulePtr(new verilog::TagRectification(
-        unwantedTagNodes, unwantedTagLeaves, verilog::TreeContext(), true)));
+  //std::unordered_set<verilog::NodeEnum> unwantedTagNodes;
+  //std::unordered_set<verilog_tokentype> unwantedTagLeaves;
+  //unwantedTagNodes.insert(verilog::NodeEnum::kInstantiationBase);
+  //unwantedTagNodes.insert(verilog::NodeEnum::kPortDeclarationList);
+  //rules.push_back(verilog::FilteringRulePtr(new verilog::TagRectification(
+  //    unwantedTagNodes, unwantedTagLeaves, verilog::TreeContext(), true)));
   //
   //  // New exclusion rule
   //  // clear the unwantedTagNodes and unwantedTagLeaves
@@ -328,14 +328,21 @@ static int AnalyzeOneFile(
   //
   // New exclusion rule
   // clear the unwantedTagNodes and unwantedTagLeaves
-  //std::unordered_set<verilog::NodeEnum> unwantedTagNodes3;
-  //std::unordered_set<verilog_tokentype> unwantedTagLeaves3;
-  //unwantedTagLeaves3.insert(verilog_tokentype::SymbolIdentifier);
-  //verilog::TreeContext tree_context3;
-  //tree_context3.push_back(verilog::NodeEnum::kIfHeader);
-  //tree_context3.push_back(verilog::NodeEnum::kBinaryExpression);
-  //rules.push_back(verilog::FilteringRulePtr(new verilog::TagRectification(
+  // std::unordered_set<verilog::NodeEnum> unwantedTagNodes3;
+  // std::unordered_set<verilog_tokentype> unwantedTagLeaves3;
+  // unwantedTagLeaves3.insert(verilog_tokentype::SymbolIdentifier);
+  // verilog::TreeContext tree_context3;
+  // tree_context3.push_back(verilog::NodeEnum::kIfHeader);
+  // tree_context3.push_back(verilog::NodeEnum::kBinaryExpression);
+  // rules.push_back(verilog::FilteringRulePtr(new verilog::TagRectification(
   //    unwantedTagNodes3, unwantedTagLeaves3, tree_context3, false)));
+  //  std::cout << "\n"
+  //            << verilog::ConvertVerilogTreeToTerminalText(*syntax_tree) <<
+  //            "\n";
+  //  exit(0);
+#else
+  rules.push_back(verilog::FilteringRulePtr(new verilog::SelectAll()));
+#endif
 
   verible::SymbolPtr filteredTree =
       verilog::FilterSymbolsVerilogTree(*syntax_tree, rules);
