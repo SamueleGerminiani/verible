@@ -38,23 +38,28 @@ class VerilogTreeToDotTextConverter : public verible::SymbolVisitor {
   void Visit(const verible::SyntaxTreeLeaf &) final;
   void Visit(const verible::SyntaxTreeNode &) final;
 
+  // Returns the DOT text of the tree.
   std::string GetDotText() {
     FinalizeTree();
     std::string ret = dot_.str();
     dot_.str("");
     return ret;
   }
+  // Initializes the dot string
   void InitTree() {
     dot_ << "digraph SystemVerilog_tree {" << std::endl;
     dot_ << "node [shape=ellipse];" << std::endl;
   }
+  // finalizes the dot string
   void FinalizeTree() { dot_ << "}" << std::endl; }
 
  protected:
+  // buffer for the dot text
   std::stringstream dot_;
-  std::stack<size_t> parentIDs_;
-  size_t nextNodeID_ = 0;
-  size_t depth_ = 0;
+  // stack to keep track of ids of the parent nodes
+  std::stack<size_t> parent_ids_;
+  // id of the next node to be used in the dot text
+  size_t next_node_id_ = 0;
 };
 
 VerilogTreeToDotTextConverter::VerilogTreeToDotTextConverter() { InitTree(); }
@@ -65,35 +70,41 @@ void VerilogTreeToDotTextConverter::Visit(const verible::SyntaxTreeLeaf &leaf) {
 
   std::string tag_info = (txt == tag) ? txt : (tag + ": " + txt);
 
-  dot_ << std::string(depth_, '\t') << nextNodeID_ << " [label=\"" << tag_info
+  // depth of the node in the tree, used for indentation
+  size_t depth = parent_ids_.size();
+
+  dot_ << std::string(depth, '\t') << next_node_id_ << " [label=\"" << tag_info
        << "\""
        << " shape=box"
        << "];" << std::endl;
-  dot_ << std::string(depth_, '\t') << parentIDs_.top() << " -> " << nextNodeID_
+  dot_ << std::string(depth, '\t') << parent_ids_.top() << " -> " << next_node_id_
        << ";" << std::endl;
-  nextNodeID_++;
+  next_node_id_++;
 }
 
 void VerilogTreeToDotTextConverter::Visit(const verible::SyntaxTreeNode &node) {
   std::string tag_info =
       NodeEnumToString(static_cast<NodeEnum>(node.Tag().tag));
 
-  if (parentIDs_.empty()) {
-    dot_ << nextNodeID_ << " [label=\"" << tag_info
+  // depth of the node in the tree, used for indentation
+  size_t depth = parent_ids_.size();
+
+  if (parent_ids_.empty()) {
+    // this is the root node
+    dot_ << next_node_id_ << " [label=\"" << tag_info
          << "\" fontcolor=white style=filled bgcolor=black];" << std::endl;
   } else {
-    dot_ << std::string(depth_, '\t') << nextNodeID_ << " [label=\"" << tag_info
+    // this is a non-root node
+    dot_ << std::string(depth, '\t') << next_node_id_ << " [label=\"" << tag_info
          << "\"];" << std::endl;
-    dot_ << std::string(depth_, '\t') << parentIDs_.top() << " -> "
-         << nextNodeID_ << ";" << std::endl;
+    dot_ << std::string(depth, '\t') << parent_ids_.top() << " -> "
+         << next_node_id_ << ";" << std::endl;
   }
-  depth_++;
-  parentIDs_.push(nextNodeID_++);
+  parent_ids_.push(next_node_id_++);
   for (const auto &child : node.children()) {
     if (child) child->Accept(this);
   }
-  parentIDs_.pop();
-  depth_--;
+  parent_ids_.pop();
 }
 
 std::string ConvertVerilogTreeToDotText(const verible::Symbol &root) {

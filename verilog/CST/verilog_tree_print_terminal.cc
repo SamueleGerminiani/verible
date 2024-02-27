@@ -47,14 +47,14 @@ class VerilogTreeToTerminalTextConverter : public verible::SymbolVisitor {
  protected:
   std::stringstream terminal_;
   // the edges string is used to keep track of the edges of the tree
-  std::string edgesStr_;
+  std::string edge_str_;
 
   // configurable parameters
   // Warning: the vertical connector must be a single character
-  const char verticalConnector = '|';
-  const std::string horizontalConnector = "`--> ";
-  size_t verticalSpaceBetweenNodes = 1;
-  const std::string horizontalWhiteSpace = std::string(10, ' ');
+  const char kVerticalConnector_ = '|';
+  const std::string kHorizontalConnector_ = "`--> ";
+  const size_t kVerticalSpaceBetweenNodes_ = 1;
+  const std::string kHorizontalWhiteSpace_ = std::string(10, ' ');
 };
 
 VerilogTreeToTerminalTextConverter::VerilogTreeToTerminalTextConverter() =
@@ -68,10 +68,10 @@ void VerilogTreeToTerminalTextConverter::Visit(
   std::string tag_info = (txt == tag) ? txt : (tag + ": " + txt);
 
   // print the leaf
-  terminal_ << edgesStr_ << horizontalConnector << tag_info << "\n";
+  terminal_ << edge_str_ << kHorizontalConnector_ << tag_info << "\n";
   // print the edges
-  for (size_t i = 0; i < verticalSpaceBetweenNodes; i++) {
-    terminal_ << edgesStr_ << "\n";
+  for (size_t i = 0; i < kVerticalSpaceBetweenNodes_; i++) {
+    terminal_ << edge_str_ << "\n";
   }
 }
 
@@ -81,16 +81,16 @@ void VerilogTreeToTerminalTextConverter::Visit(
       NodeEnumToString(static_cast<NodeEnum>(node.Tag().tag));
 
   // print the node
-  terminal_ << edgesStr_ << horizontalConnector << tag_info << "\n";
+  terminal_ << edge_str_ << kHorizontalConnector_ << tag_info << "\n";
   if (node.empty()) {
     return;
   }
   // append a new vertical connector for the children of this node
-  edgesStr_ += horizontalWhiteSpace + verticalConnector;
+  edge_str_ += kHorizontalWhiteSpace_ + kVerticalConnector_;
   // print the edges, the space between nodes is dictated by the
-  // verticalSpaceBetweenNodes parameter
-  for (size_t i = 0; i < verticalSpaceBetweenNodes; i++) {
-    terminal_ << edgesStr_ << "\n";
+  // kVerticalSpaceBetweenNodes_ parameter
+  for (size_t i = 0; i < kVerticalSpaceBetweenNodes_; i++) {
+    terminal_ << edge_str_ << "\n";
   }
 
   // gather non-null children: we need this because the last child is a special
@@ -105,17 +105,17 @@ void VerilogTreeToTerminalTextConverter::Visit(
     //  if this is the last child, we need to replace the last appended edge
     //  with white space
     if (i == safe_children.size()) {
-      edgesStr_.replace(edgesStr_.size() - (horizontalWhiteSpace.size() + 1),
-                        horizontalWhiteSpace.size() + 1,
-                        horizontalWhiteSpace.size() + 1, ' ');
+      edge_str_.replace(edge_str_.size() - (kHorizontalWhiteSpace_.size() + 1),
+                        kHorizontalWhiteSpace_.size() + 1,
+                        kHorizontalWhiteSpace_.size() + 1, ' ');
     }
 
     safe_children[i - 1]->Accept(this);
   }
 
   // reduce the edges string to match the parent
-  edgesStr_ =
-      edgesStr_.substr(0, edgesStr_.size() - (horizontalWhiteSpace.size() + 1));
+  edge_str_ = edge_str_.substr(
+      0, edge_str_.size() - (kHorizontalWhiteSpace_.size() + 1));
 }
 
 std::string ConvertVerilogTreeToTerminalText(const verible::Symbol &root) {

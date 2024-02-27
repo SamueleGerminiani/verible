@@ -14,12 +14,11 @@
 
 #pragma once
 
-#include "absl/strings/string_view.h"
 #include "common/text/symbol.h"
 
 namespace verilog {
 
-// Returns a JSON representation of tree contained at root.
+// Returns a pretty text representation of tree that can be easly printed to the terminal.
 std::string ConvertVerilogTreeToTerminalText(const verible::Symbol &root);
 
 }  // namespace verilog
